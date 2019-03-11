@@ -1,0 +1,4 @@
+
+D:\Kesavan\bikepooling\bpl\firebase_server\functions>node  "C:\Users\deeps_000\AppData\Roaming\npm\\node_modules\firebase-tools\lib\bin\firebase.js" deploy --only functions:exports.CreateWithSocialLogin = functions.https.onRequest((request, response) = 
+
+D:\Kesavan\bikepooling\bpl\firebase_server\functions>
