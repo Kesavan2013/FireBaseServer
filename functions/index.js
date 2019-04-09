@@ -136,12 +136,12 @@ exports.CheckUserExists = functions.https.onRequest((request, response) => {
 	var userid = request.body.userid;
 	if (request.method == 'POST') {
 		try {
-			admin.database().ref('/users').orderByChild("userid").equalTo(userid).once("value",snapshot => {
-				if (snapshot.exists()){
-				  const userData = snapshot.val();				  
-				  response.send({ message: "error Update", success: userData })
+			admin.database().ref('/users').orderByChild("userid").equalTo(userid).once("value", snapshot => {
+				if (snapshot.exists()) {
+					const userData = snapshot.val();
+					response.send({ message: "error Update", success: userData })
 				}
-				else{
+				else {
 					response.send({ message: "error Update", success: null })
 				}
 			});
@@ -162,11 +162,11 @@ exports.CreateWithSocialLogin = functions.https.onRequest((request, response) =>
 			var email = request.body.email;
 			var profilePhoto = request.body.profilePhoto;
 
-			admin.database().ref('/users').orderByChild("userid").equalTo(userid).once("value",snapshot => {
-				if (snapshot.exists()){				  			  
-				  response.send({ message: "Record Already Exists", success: userData })
+			admin.database().ref('/users').orderByChild("userid").equalTo(userid).once("value", snapshot => {
+				if (snapshot.exists()) {
+					response.send({ message: "Record Already Exists", success: userData })
 				}
-				else{
+				else {
 					admin.database().ref('/users').push({
 						userid: userid,
 						username: username,
@@ -180,8 +180,8 @@ exports.CreateWithSocialLogin = functions.https.onRequest((request, response) =>
 					response.send({ message: "Records Inserted Successfully !", success: null })
 				}
 			});
-			
-			response.send({message:"Records Inserted Succesfully !",success:true})
+
+			response.send({ message: "Records Inserted Succesfully !", success: true })
 		}
 		catch (e) {
 			response.send({ message: e, success: false });
@@ -222,13 +222,13 @@ exports.SignInWithUserPwd = functions.https.onRequest((request, response) => {
 	var username = request.body.username;
 	var email = request.body.email;
 	var password = request.body.password;
-	var deviceToken = request.body.deviceToken;		
+	var deviceToken = request.body.deviceToken;
 
 	if (request.method == 'POST') {
 		firebase1.auth().createUserWithEmailAndPassword(email, password).then((user) => {
 			try {
 				var userId = user.user.uid;
-				
+
 				admin.database().ref('/users').push({
 					userid: userId,
 					username: username,
@@ -380,9 +380,9 @@ exports.RequestForRide = functions.https.onRequest((request, response) => {
 						admin.messaging().sendToDevice(notification_data.device_token, payload).then(function (res) {
 							response.send(JSON.stringify({ 'has_notification': true })); // inform the app that a notification was sent
 						})
-							.catch(function (error) {
-								response.send(JSON.stringify(error)); // send the push notification error to the app
-							});
+						.catch(function (error) {
+							response.send(JSON.stringify(error)); // send the push notification error to the app
+						});
 
 					}
 				});
@@ -392,7 +392,77 @@ exports.RequestForRide = functions.https.onRequest((request, response) => {
 			response.send("error : " + e); // send the push notification error to the app
 		}
 	}
+});
 
+exports.OfferRide = functions.https.onRequest((request, response) => {
+	if (request.method == 'POST') {
+		var offerRide = request.body.OfferRide;
+		admin.database().ref('/rides').push(offerRide);
+		response.send({ message: "Records Inserted Successfully !", success: true })
+	}
+});
+
+exports.GetCongfigureRider = functions.https.onRequest((request, response) => {
+	if (request.method == 'POST') {
+		var userid = request.body.userId;		
+		
+		admin.database().ref('/configureride').orderByChild("userId").equalTo(userid).on("value", snapshot => {
+			if (snapshot.exists()) {
+				snapshot.forEach(function(childSnapshot) {
+					var childData = childSnapshot.val();
+					response.send({ message: "Configure retrieved Successfully !", success: true,Data : childData })
+				});
+			}
+			else {
+				response.send({ message: "Configure Retrived Error !", success: false,Data:null })
+			}
+		});
+	}
+})
+
+exports.GetUser = functions.https.onRequest((request, response) => {
+	if (request.method == 'POST') {
+		var userid = request.body.userId;
+		admin.database().ref('/users').orderByChild("userid").equalTo(userid).once("value", snapshot => {
+			if (snapshot.exists()) {
+				snapshot.forEach(function(childSnapshot) {
+					var childData = childSnapshot.val();
+					response.send({ message: "User retrieved Successfully !", success: true,Data : childData })
+				});
+			}
+			else {
+				response.send({ message: "User Retrived Error !", success: false,Data:null })
+			}
+		});
+	}
+});
+
+exports.ConfigureRider = functions.https.onRequest((request, response) => {
+	if (request.method == 'POST') {
+		var configureRide = request.body.ConfigureRider;
+
+		admin.database().ref('/configureride').orderByChild("userId").equalTo(configureRide.userId).on("value", snapshot => {
+			if (snapshot.exists()) {
+				snapshot.forEach(function(childSnapshot) {
+					var childData = childSnapshot.val();
+					childSnapshot.ref.update({
+						 ContactNumber: configureRide.ContactNumber, 
+						 Price: configureRide.Price, 
+						 VechileName: configureRide.VechileName,
+						 VechileNumber:configureRide.VechileNumber
+					});
+					response.send({ message: "User Update Successfully !", success: true,Data : childSnapshot.val() })
+				});
+			}
+			else {
+				admin.database().ref("/configureride").push(configureRide);
+				response.send({ message: "User Retrived Error !", success: false,Data:configureRide })
+			}
+		});
+
+		
+		response.send({ message: "Records Inserted Successfully !", success: true })
+	}
 });
 
 exports.init_push = functions.https.onRequest((request, response) => {
@@ -407,7 +477,6 @@ exports.init_push = functions.https.onRequest((request, response) => {
 				var childData = childSnapshot.val();
 				if (childData.userid == id) {
 					try {
-
 						response.send(JSON.stringify({ 'has_notification': childData })); // inform the app that a notification was sent
 					}
 					catch (e) {
