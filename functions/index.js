@@ -271,7 +271,7 @@ exports.RideStatus = functions.https.onRequest((request, response) => {
 			});
 	}
 })
-
+ 
 exports.RideUpdateUserLocation = functions.https.onRequest((request, response) => {
 
 	if (request.method == 'POST') {
