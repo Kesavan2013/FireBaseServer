@@ -33,13 +33,13 @@ exports.RideUsers = functions.https.onRequest((request, response) => {
 				var childData = childSnapshot.val();
 				//if(childData.offerRide == true)
 				//{
-					userlists.push(childData);
+				userlists.push(childData);
 				//}
 			})
 
-			response.send({ success: true, Data: userlists,value : snapshot.val()  });
+			response.send({ success: true, Data: userlists, value: snapshot.val() });
 		})
-		
+
 	}
 })
 
@@ -68,9 +68,9 @@ exports.GetMyRide = functions.https.onRequest((request, response) => {
 			var userid = request.body.userid;
 			var rideLists = [];
 
-			admin.database().ref('/rides').orderByChild("userId").equalTo(userid).on("value", snapshot => {				
+			admin.database().ref('/rides').orderByChild("userId").equalTo(userid).on("value", snapshot => {
 				snapshot.forEach(function (childSnapshot) {
-					var childData = childSnapshot.val();						
+					var childData = childSnapshot.val();
 					rideLists.push(childData);
 				})
 			})
@@ -141,8 +141,8 @@ exports.CreateWithSocialLogin = functions.https.onRequest((request, response) =>
 						profilePhoto: profilePhoto,
 						latitude: '',
 						longitude: '',
-						status: "Online",						
-						offerRide : "false"
+						status: "Online",
+						offerRide: "false"
 					});
 					response.send({ message: "Records Inserted Successfully !", success: null })
 				}
@@ -172,7 +172,7 @@ exports.SignIn = functions.https.onRequest((request, response) => {
 					latitude: '',
 					longitude: '',
 					status: "Online",
-					offerRide : "false"
+					offerRide: "false"
 				}
 
 				response.send({ message: "SignSuccess", data: user, success: true })
@@ -205,7 +205,7 @@ exports.SignInWithUserPwd = functions.https.onRequest((request, response) => {
 					latitude: '',
 					longitude: '',
 					status: 'Online',
-					offerRide : "false"
+					offerRide: "false"
 				});
 
 				var userInfo = firebase1.auth().currentUser;
@@ -237,6 +237,7 @@ exports.RideStatus = functions.https.onRequest((request, response) => {
 		var usercurrentLocation = request.body.currentLocation;
 		var userdestinationLocation = request.body.destinationLocation;
 		var phoneNo = request.body.phoneNo;
+		var requestedUserId = request.body.requestedUserId;
 
 		var objRideInfo = {
 			rideLocation: usercurrentLocation,
@@ -246,32 +247,43 @@ exports.RideStatus = functions.https.onRequest((request, response) => {
 			phoneNo: phoneNo
 		}
 
-		var notification_data = {};
-		notification_data = {
-			payload: {
-				title: 'On d Vay',
-				body: 'Request Status for Ride'
-			},
-			device_token: deviceToken
-		};
-		has_notification = true;
+		admin.database().ref('/users').orderByChild("userid").equalTo(requestedUserId).on("value", snapshot => {
+			if (snapshot.exists()) {
+				snapshot.forEach(function (childSnapshot) {					
+					var notification_data = {};
+					notification_data = {
+						payload: {
+							title: 'On d Vay',
+							body: 'Request Status for Ride'
+						},
+						device_token: childSnapshot.deviceToken
+					};
+					has_notification = true;
 
-		var payload = {
-			notification: notification_data.payload,
-			data: {
-				value: JSON.stringify(objRideInfo)
+					var payload = {
+						notification: notification_data.payload,
+						data: {
+							value: JSON.stringify(objRideInfo)
+						}
+					}
+
+					admin.messaging().sendToDevice(childSnapshot.deviceToken, payload).then(function (res) {
+						response.send(JSON.stringify({ 'has_notification': notification_data.device_token })); // inform the app that a notification was sent
+					})
+						.catch(function (error) {
+							response.send(JSON.stringify(error)); // send the push notification error to the app
+						});
+				});
 			}
-		}
+			else {
+				response.send({ message: "User not exists !", success: false, Data: null })
+			}
+		});
 
-		admin.messaging().sendToDevice(deviceToken, payload).then(function (res) {
-			response.send(JSON.stringify({ 'has_notification': notification_data.device_token })); // inform the app that a notification was sent
-		})
-			.catch(function (error) {
-				response.send(JSON.stringify(error)); // send the push notification error to the app
-			});
+
 	}
 })
- 
+
 exports.RideUpdateUserLocation = functions.https.onRequest((request, response) => {
 
 	if (request.method == 'POST') {
@@ -287,7 +299,7 @@ exports.RideUpdateUserLocation = functions.https.onRequest((request, response) =
 			snapshot.forEach(function (childSnapshot) {
 				var childData = childSnapshot.val();
 				if (childData.userid == userid) {
-					childSnapshot.ref.update({ longitude: long, latitude: lat, status: status,deviceToken:device_token });
+					childSnapshot.ref.update({ longitude: long, latitude: lat, status: status, deviceToken: device_token });
 				}
 			})
 		})
@@ -299,7 +311,8 @@ exports.RequestForRide = functions.https.onRequest((request, response) => {
 
 	if (request.method == 'POST') {
 		try {
-			var riderId = request.body.userid;
+			var requestedUserId = request.body.requestedUserId;
+			var riderUserid = request.body.requestedUserId;
 			var rideStartTime = request.body.rideStartTime;
 			var rideDistance = request.body.rideDistance;
 			var usercurrentLocation = request.body.currentLocation;
@@ -311,7 +324,7 @@ exports.RequestForRide = functions.https.onRequest((request, response) => {
 			ref.on("value", function (snapshot) {
 				snapshot.forEach(function (childSnapshot) {
 					var childData = childSnapshot.val();
-					if (childData.userid.toString() == riderId) {
+					if (childData.userid.toString() == riderUserid) {
 
 						var objRideInfo = {
 							rideDistance: rideDistance,
@@ -319,7 +332,8 @@ exports.RequestForRide = functions.https.onRequest((request, response) => {
 							rideLocation: usercurrentLocation,
 							destinationLocation: userdestinationLocation,
 							device_token: userrequestDeviceToken,
-							ridestatus: -1
+							ridestatus: -1,
+							requestedUserId: requestedUserId
 						}
 						var notification_data = {};
 						notification_data = {
@@ -350,9 +364,9 @@ exports.RequestForRide = functions.https.onRequest((request, response) => {
 						admin.messaging().sendToDevice(notification_data.device_token, payload).then(function (res) {
 							response.send(JSON.stringify({ 'has_notification': true })); // inform the app that a notification was sent
 						})
-						.catch(function (error) {
-							response.send(JSON.stringify(error)); // send the push notification error to the app
-						});
+							.catch(function (error) {
+								response.send(JSON.stringify(error)); // send the push notification error to the app
+							});
 
 					}
 				});
@@ -366,18 +380,18 @@ exports.RequestForRide = functions.https.onRequest((request, response) => {
 
 exports.OfferRide = functions.https.onRequest((request, response) => {
 	if (request.method == 'POST') {
-		var offerRide = request.body.OfferRide;		
-		admin.database().ref('/rides').push(offerRide);		
+		var offerRide = request.body.OfferRide;
+		admin.database().ref('/rides').push(offerRide);
 
 		admin.database().ref('/users').orderByChild("userid").equalTo(offerRide.userId).on("value", snapshot => {
 			if (snapshot.exists()) {
-				snapshot.forEach(function(childSnapshot) {					
-					childSnapshot.ref.update({offerRide : true});
+				snapshot.forEach(function (childSnapshot) {
+					childSnapshot.ref.update({ offerRide: true });
 					response.send({ message: "DeviceToken Update Successfully !", success: true })
 				});
 			}
 			else {
-				response.send({ message: "User not exists !", success: false,Data:null })
+				response.send({ message: "User not exists !", success: false, Data: null })
 			}
 		});
 	}
@@ -385,17 +399,17 @@ exports.OfferRide = functions.https.onRequest((request, response) => {
 
 exports.GetCongfigureRider = functions.https.onRequest((request, response) => {
 	if (request.method == 'POST') {
-		var userid = request.body.userId;		
-		
+		var userid = request.body.userId;
+
 		admin.database().ref('/configureride').orderByChild("userId").equalTo(userid).once("value", snapshot => {
 			if (snapshot.exists()) {
-				snapshot.forEach(function(childSnapshot) {
+				snapshot.forEach(function (childSnapshot) {
 					var childData = childSnapshot.val();
-					response.send({ message: "Configure retrieved Successfully !", success: true,Data : childData })
+					response.send({ message: "Configure retrieved Successfully !", success: true, Data: childData })
 				});
 			}
 			else {
-				response.send({ message: "Configure Retrived Error !", success: false,Data:null })
+				response.send({ message: "Configure Retrived Error !", success: false, Data: null })
 			}
 		});
 	}
@@ -406,13 +420,13 @@ exports.GetUser = functions.https.onRequest((request, response) => {
 		var userid = request.body.userId;
 		admin.database().ref('/users').orderByChild("userid").equalTo(userid).once("value", snapshot => {
 			if (snapshot.exists()) {
-				snapshot.forEach(function(childSnapshot) {
+				snapshot.forEach(function (childSnapshot) {
 					var childData = childSnapshot.val();
-					response.send({ message: "User retrieved Successfully !", success: true,Data : childData })
+					response.send({ message: "User retrieved Successfully !", success: true, Data: childData })
 				});
 			}
 			else {
-				response.send({ message: "User Retrived Error !", success: false,Data:null })
+				response.send({ message: "User Retrived Error !", success: false, Data: null })
 			}
 		});
 	}
@@ -423,7 +437,7 @@ exports.UpdateDeviceId = functions.https.onRequest((request, response) => {
 		let userid = request.body.userid;
 		admin.database().ref('/users').orderByChild("userid").equalTo(userid).once("value", snapshot => {
 			if (snapshot.exists()) {
-				snapshot.ref.update({ deviceToken: request.body.deviceToken});
+				snapshot.ref.update({ deviceToken: request.body.deviceToken });
 				response.send({ message: "DeviceToken Update Successfully !", success: true })
 			}
 		});
@@ -437,24 +451,24 @@ exports.ConfigureRider = functions.https.onRequest((request, response) => {
 
 		admin.database().ref('/configureride').orderByChild("userId").equalTo(configureRide.userId).on("value", snapshot => {
 			if (snapshot.exists()) {
-				snapshot.forEach(function(childSnapshot) {
+				snapshot.forEach(function (childSnapshot) {
 					var childData = childSnapshot.val();
 					childSnapshot.ref.update({
-						 ContactNumber: configureRide.ContactNumber, 
-						 Price: configureRide.Price, 
-						 VechileName: configureRide.VechileName,
-						 VechileNumber:configureRide.VechileNumber
+						ContactNumber: configureRide.ContactNumber,
+						Price: configureRide.Price,
+						VechileName: configureRide.VechileName,
+						VechileNumber: configureRide.VechileNumber
 					});
-					response.send({ message: "User Update Successfully !", success: true,Data : childSnapshot.val() })
+					response.send({ message: "User Update Successfully !", success: true, Data: childSnapshot.val() })
 				});
 			}
 			else {
 				admin.database().ref("/configureride").push(configureRide);
-				response.send({ message: "User Retrived Error !", success: false,Data:configureRide })
+				response.send({ message: "User Retrived Error !", success: false, Data: configureRide })
 			}
 		});
 
-		
+
 		response.send({ message: "Records Inserted Successfully !", success: true })
 	}
 });
