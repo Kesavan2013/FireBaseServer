@@ -163,18 +163,6 @@ exports.SignIn = functions.https.onRequest((request, response) => {
 	if (request.method == 'POST') {
 		try {
 			firebase1.auth().signInWithEmailAndPassword(email, password).then((user) => {
-
-				let objUser = {
-					email: user.email,
-					username: user.displayName,
-					userid: user.uid,
-					photoImageURL: user.photoURL,
-					latitude: '',
-					longitude: '',
-					status: "Online",
-					offerRide: "false"
-				}
-
 				response.send({ message: "SignSuccess", data: user, success: true })
 			})
 		}
@@ -190,7 +178,7 @@ exports.SignInWithUserPwd = functions.https.onRequest((request, response) => {
 	var username = request.body.username;
 	var email = request.body.email;
 	var password = request.body.password;
-	var deviceToken = request.body.deviceToken;
+	var deviceToken = (request.body.deviceToken != undefined) ? request.body.deviceToken : "NA" ;
 
 	if (request.method == 'POST') {
 		firebase1.auth().createUserWithEmailAndPassword(email, password).then((user) => {
@@ -220,7 +208,7 @@ exports.SignInWithUserPwd = functions.https.onRequest((request, response) => {
 				response.send(JSON.stringify({ success: true }));
 			}
 			catch (e) {
-				response.send("error Inside:" + e);
+				response.send("error Inside:" + userId);
 			}
 
 		}).catch((err) => {
@@ -284,12 +272,33 @@ exports.RideStatus = functions.https.onRequest((request, response) => {
 	}
 })
 
+
+exports.DeleteDeviceToken = functions.https.onRequest((request, response) => {
+
+	if (request.method == 'POST') {
+		var userid = request.body.userid;
+		var deviceToken = request.body.deviceToken
+		var ref = admin.database().ref("users");
+
+		ref.on("value", function (snapshot) {
+			snapshot.forEach(function (childSnapshot) {
+				var childData = childSnapshot.val();
+				if (childData.userid == userid) {
+				 	childSnapshot.ref.update({ status : "Offline"});
+				}
+			})
+		})
+		response.send({ message: "User Updated Success", result: true, Data: userid });
+	}
+})
+
+
 exports.RideUpdateUserLocation = functions.https.onRequest((request, response) => {
 
 	if (request.method == 'POST') {
 		var userid = request.body.userid;
-		var long = request.body.longitude;
-		var lat = request.body.latitude;
+		var long = (request.body.longitude != undefined) ? request.body.longitude : '0';
+		var lat = (request.body.latitude != undefined) ? request.body.latitude : '0';
 		var status = request.body.status;
 		var device_token = request.body.deviceToken;
 
