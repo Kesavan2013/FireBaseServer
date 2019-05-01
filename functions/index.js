@@ -68,16 +68,14 @@ exports.GetMyRide = functions.https.onRequest((request, response) => {
 			var userid = request.body.userid;
 			var rideLists = [];
 
-			admin.database().ref('/rides').orderByChild("userId").equalTo(userid).on("value", snapshot => {
+			admin.database().ref('rides').orderByChild("rideruserid").equalTo(userid).on("value", snapshot => {
 				snapshot.forEach(function (childSnapshot) {
-					var childData = childSnapshot.val();
-					if(childData.status == 'Online' && childData.deviceToken != '')
-					{
-						rideLists.push(childData);
-					}
+					var childData = childSnapshot.val();					
+					rideLists.push(childData);					
 				})
 			})
 			response.send({ message: "Ride retrieved Successfully" + userid, success: true, rides: rideLists });
+			
 		}
 		catch (e) {
 			response.send({ message: JSON.stringify(e), success: false });
@@ -303,8 +301,7 @@ exports.RideUpdateUserLocation = functions.https.onRequest((request, response) =
 		var userid = request.body.userid;
 		var long = (request.body.longitude != undefined) ? request.body.longitude : '0';
 		var lat = (request.body.latitude != undefined) ? request.body.latitude : '0';
-		var status = request.body.status;
-		var device_token = request.body.deviceToken;
+		var status = request.body.status;		
 
 		var ref = admin.database().ref("users");
 
@@ -312,7 +309,7 @@ exports.RideUpdateUserLocation = functions.https.onRequest((request, response) =
 			snapshot.forEach(function (childSnapshot) {
 				var childData = childSnapshot.val();
 				if (childData.userid == userid) {
-					childSnapshot.ref.update({ longitude: long, latitude: lat, status: status, deviceToken: device_token });
+					childSnapshot.ref.update({ longitude: long, latitude: lat, status: status });
 				}
 			})
 		})
