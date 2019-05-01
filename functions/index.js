@@ -237,16 +237,16 @@ exports.RideStatus = functions.https.onRequest((request, response) => {
 
 		admin.database().ref('/users').orderByChild("userid").equalTo(requestedUserId).on("value", snapshot => {
 			if (snapshot.exists()) {
-				snapshot.forEach(function (childSnapshot) {					
+				snapshot.forEach(function (childSnapshot) {	
+					var childData = childSnapshot.val();				
 					var notification_data = {};
 					notification_data = {
 						payload: {
 							title: 'On d Vay',
 							body: 'Request Status for Ride'
 						},
-						device_token: childSnapshot.deviceToken
-					};
-					has_notification = true;
+						device_token: childData.deviceToken
+					};					
 
 					var payload = {
 						notification: notification_data.payload,
@@ -254,13 +254,14 @@ exports.RideStatus = functions.https.onRequest((request, response) => {
 							value: JSON.stringify(objRideInfo)
 						}
 					}
-
-					admin.messaging().sendToDevice(childSnapshot.deviceToken, payload).then(function (res) {
+					admin.messaging().sendToDevice(childData.device_token, payload).then(function (res) {
 						response.send(JSON.stringify({ 'has_notification': notification_data.device_token })); // inform the app that a notification was sent
 					})
-						.catch(function (error) {
-							response.send(JSON.stringify(error)); // send the push notification error to the app
-						});
+					.catch(function (error) {
+						response.send(JSON.stringify(error)); // send the push notification error to the app
+					});
+
+					
 				});
 			}
 			else {
@@ -444,10 +445,13 @@ exports.GetUser = functions.https.onRequest((request, response) => {
 exports.UpdateDeviceId = functions.https.onRequest((request, response) => {
 	if (request.method == 'POST') {
 		let userid = request.body.userid;
-		admin.database().ref('/users').orderByChild("userid").equalTo(userid).once("value", snapshot => {
+		admin.database().ref('/users').orderByChild("userid").equalTo(userid).on("value", snapshot => {
 			if (snapshot.exists()) {
-				snapshot.ref.update({ deviceToken: request.body.deviceToken });
-				response.send({ message: "DeviceToken Update Successfully !", success: true })
+				snapshot.forEach(function (childSnapshot) {
+					var childData = childSnapshot.val();
+					childSnapshot.ref.update({ deviceToken: request.body.deviceToken });
+					response.send({ message: "DeviceToken Update Successfully !", success: true })
+				});
 			}
 		});
 	}
