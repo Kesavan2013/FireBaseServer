@@ -31,10 +31,10 @@ exports.RideUsers = functions.https.onRequest((request, response) => {
 		ref.on("value", function (snapshot) {
 			snapshot.forEach(function (childSnapshot) {
 				var childData = childSnapshot.val();
-				//if(childData.offerRide == true)
-				//{
-				userlists.push(childData);
-				//}
+				if(childData.status == 'Online' && childData.deviceToken != '')
+				{
+					userlists.push(childData);
+				}
 			})
 
 			response.send({ success: true, Data: userlists, value: snapshot.val() });
@@ -71,7 +71,10 @@ exports.GetMyRide = functions.https.onRequest((request, response) => {
 			admin.database().ref('/rides').orderByChild("userId").equalTo(userid).on("value", snapshot => {
 				snapshot.forEach(function (childSnapshot) {
 					var childData = childSnapshot.val();
-					rideLists.push(childData);
+					if(childData.status == 'Online' && childData.deviceToken != '')
+					{
+						rideLists.push(childData);
+					}
 				})
 			})
 			response.send({ message: "Ride retrieved Successfully" + userid, success: true, rides: rideLists });
@@ -351,7 +354,7 @@ exports.RequestForRide = functions.https.onRequest((request, response) => {
 								title: 'On d Vay',
 								body: 'Request for Ride'
 							},
-							device_token: childData.deviceToken
+							device_token: userrequestDeviceToken
 						};
 						has_notification = true;
 
